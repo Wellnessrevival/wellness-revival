@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CreditCard, Building2, ShoppingBag, Shield, Lock } from 'lucide-react';
+import { CreditCard, ShoppingBag, Shield, Lock } from 'lucide-react';
 
 export default function Checkout() {
   const [selectedPayment, setSelectedPayment] = useState('paypal');
@@ -91,7 +91,6 @@ export default function Checkout() {
         onApprove: (data, actions) => {
           return actions.order.capture().then((details) => {
             alert(`Thank you, ${details.payer.name.given_name}! Your order has been processed. Order ID: ${details.id}`);
-            // In production, you would send this to your backend to process the order
             console.log('Order details:', details);
           });
         },
@@ -103,49 +102,50 @@ export default function Checkout() {
     }
   }, [selectedPayment, formData, total, quantity]);
 
-  // Initialize Square Web Payments SDK
+  // Initialize Square Payment Form
   useEffect(() => {
-    if (selectedPayment === 'square' && !squareReady && window.Square) {
-      const initSquare = async () => {
-        try {
-          const payments = window.Square.payments({
-            applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID,
-            environment: 'production',
-          });
-          
-          // Create card payment method
-          const card = await payments.card();
-          await card.attach('#square-card-container');
-          
-          setSquareReady(true);
-          console.log('Square SDK initialized');
-        } catch (error) {
-          console.error('Error initializing Square:', error);
-          alert('Error loading Square payment. Please refresh the page.');
-        }
-      };
-      
-      initSquare();
+    if (selectedPayment === 'square' && !squareReady && window.SqPaymentForm) {
+      try {
+        const paymentForm = new window.SqPaymentForm({
+          applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID,
+          inputClass: 'sq-input',
+          autoBuild: false,
+          cardNumber: {
+            elementId: 'sq-cardNumber',
+          },
+          expirationDate: {
+            elementId: 'sq-expirationDate',
+          },
+          cvv: {
+            elementId: 'sq-cvv',
+          },
+          postalCode: {
+            elementId: 'sq-postalCode',
+          },
+        });
+        
+        window.paymentForm = paymentForm;
+        setSquareReady(true);
+        console.log('Square Payment Form initialized');
+      } catch (error) {
+        console.error('Error initializing Square:', error);
+      }
     }
   }, [selectedPayment, squareReady]);
 
   // Initialize Afterpay
   useEffect(() => {
     if (selectedPayment === 'afterpay' && !afterpayReady && window.AfterPay) {
-      const initAfterpay = async () => {
-        try {
-          window.AfterPay.init({
-            countryCode: 'AU',
-            merchantId: import.meta.env.VITE_AFTERPAY_MERCHANT_ID,
-          });
-          setAfterpayReady(true);
-          console.log('Afterpay SDK initialized');
-        } catch (error) {
-          console.error('Error initializing Afterpay:', error);
-        }
-      };
-      
-      initAfterpay();
+      try {
+        window.AfterPay.init({
+          countryCode: 'AU',
+          merchantId: import.meta.env.VITE_AFTERPAY_MERCHANT_ID,
+        });
+        setAfterpayReady(true);
+        console.log('Afterpay SDK initialized');
+      } catch (error) {
+        console.error('Error initializing Afterpay:', error);
+      }
     }
   }, [selectedPayment, afterpayReady]);
 
@@ -178,14 +178,6 @@ export default function Checkout() {
       color: 'bg-teal-50 border-teal-200',
       activeColor: 'bg-teal-50 border-teal-500 ring-2 ring-teal-200',
     },
-    {
-      id: 'bank',
-      name: 'Direct Bank Transfer',
-      icon: <Building2 size={20} />,
-      description: 'Transfer directly to our Australian bank account',
-      color: 'bg-amber-50 border-amber-200',
-      activeColor: 'bg-amber-50 border-amber-500 ring-2 ring-amber-200',
-    },
   ];
 
   const handleSubmit = async (e) => {
@@ -200,37 +192,30 @@ export default function Checkout() {
       await handleSquarePayment();
     } else if (selectedPayment === 'afterpay') {
       await handleAfterpayPayment();
-    } else if (selectedPayment === 'bank') {
-      alert(`Thank you! Your order for ${quantity} Wellness Revival Kit(s) has been created.\n\nPlease transfer $${total} AUD to:\nAccount Name: CE and JA Collins\nBSB: 062-551\nAccount: 10305758\n\nUse your order number as the reference. Your kit will be shipped once payment is confirmed.`);
     }
   };
 
   const handleSquarePayment = async () => {
     try {
-      if (!window.Square) {
-        alert('Square payment system is not loaded. Please refresh the page.');
+      if (!window.paymentForm) {
+        alert('Square payment system is not ready. Please refresh the page.');
         return;
       }
 
-      const payments = window.Square.payments({
-        applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID,
-        environment: 'production',
+      // Request a card token
+      window.paymentForm.requestCardToken((err, token) => {
+        if (err) {
+          alert('Error processing card. Please check your card details and try again.');
+          console.error('Square error:', err);
+          return;
+        }
+
+        // In production, you would send this token to your backend
+        alert(`Thank you! Your payment of $${total} AUD has been processed successfully.\n\nOrder ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}\n\nYour Wellness Revival Kit will be shipped shortly.`);
+        console.log('Square payment token:', token);
       });
-
-      const card = await payments.card();
-      const { token } = await card.tokenize();
-
-      if (!token) {
-        alert('Unable to tokenize card. Please check your card details and try again.');
-        return;
-      }
-
-      // In a real application, you would send this token to your backend
-      // For now, we'll show a success message
-      alert(`Thank you! Your payment of $${total} AUD has been processed successfully.\n\nOrder ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}\n\nYour Wellness Revival Kit will be shipped shortly.`);
-      console.log('Square payment token:', token);
     } catch (error) {
-      alert('Payment failed. Please check your card details and try again.');
+      alert('Payment failed. Please try again.');
       console.error('Square payment error:', error);
     }
   };
@@ -242,7 +227,6 @@ export default function Checkout() {
         return;
       }
 
-      // Afterpay payment would be handled by their SDK
       alert(`Thank you! Your Afterpay order has been created.\n\nYou will receive 4 payments of $${(total / 4).toFixed(2)} AUD.\n\nOrder ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}\n\nYour Wellness Revival Kit will be shipped shortly.`);
       console.log('Afterpay payment initiated');
     } catch (error) {
@@ -391,7 +375,7 @@ export default function Checkout() {
               {/* Payment Method */}
               <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-brand-cream-dark">
                 <h3 className="text-xl font-bold text-brand-green-dark mb-6">Payment Method</h3>
-                <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid sm:grid-cols-3 gap-3">
                   {paymentMethods.map((method) => (
                     <button
                       key={method.id}
@@ -412,28 +396,32 @@ export default function Checkout() {
                   ))}
                 </div>
 
-                {/* Bank transfer details (conditional) */}
-                {selectedPayment === 'bank' && (
-                  <div className="mt-4 bg-amber-50 rounded-xl p-4 border border-amber-200">
-                    <p className="text-sm text-brand-text font-medium mb-2">Bank Transfer Details:</p>
-                    <div className="text-xs text-brand-text-light space-y-1">
-                      <p><strong>Account Name:</strong> CE and JA Collins</p>
-                      <p><strong>BSB:</strong> 062-551</p>
-                      <p><strong>Account:</strong> 10305758</p>
-                      <p className="mt-2 italic">Please use your order number as the payment reference. Your kit will be shipped once payment is confirmed.</p>
-                    </div>
-                  </div>
-                )}
-
                 {/* PayPal button container */}
                 {selectedPayment === 'paypal' && (
                   <div id="paypal-button-container" className="mt-4"></div>
                 )}
 
-                {/* Square card container */}
+                {/* Square card form */}
                 {selectedPayment === 'square' && (
-                  <div className="mt-4">
-                    <div id="square-card-container" className="mb-4"></div>
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-brand-text mb-1.5">Card Number</label>
+                      <div id="sq-cardNumber" className="sq-input-container"></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-brand-text mb-1.5">Expiration</label>
+                        <div id="sq-expirationDate" className="sq-input-container"></div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-brand-text mb-1.5">CVV</label>
+                        <div id="sq-cvv" className="sq-input-container"></div>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-brand-text mb-1.5">Postal Code</label>
+                      <div id="sq-postalCode" className="sq-input-container"></div>
+                    </div>
                   </div>
                 )}
 
