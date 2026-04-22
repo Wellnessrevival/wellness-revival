@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CreditCard, ShoppingBag, Shield, Lock } from 'lucide-react';
+import { CreditCard, Shield, Lock } from 'lucide-react';
 
 export default function Checkout() {
   const [selectedPayment, setSelectedPayment] = useState('paypal');
@@ -65,54 +65,7 @@ export default function Checkout() {
     window.location.href = `https://www.paypal.com/cgi-bin/webscr?${paypalParams.toString()}`;
   };
 
-  const handleAfterpayPayment = () => {
-    if (!validateForm()) return;
 
-    setIsProcessing(true);
-
-    // Create Afterpay order token
-    const orderToken = `WR-${Date.now()}`;
-    const apiKey = '0c54227b-5bbd-4fcb-b068-352d35d605b1';
-    
-    // Construct Afterpay checkout URL with proper parameters
-    const afterpayCheckoutUrl = new URL('https://checkout.afterpay.com/checkout');
-    
-    const orderData = {
-      token: orderToken,
-      amount: parseFloat(total),
-      currency: 'AUD',
-      merchantId: '154331',
-      consumer: {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-      },
-      items: [
-        {
-          name: 'Wellness Revival Kit',
-          description: 'Ultra BCP Oil (15ml) + Bodease Balm (10g) + Free Shipping',
-          sku: 'WELLNESS-REVIVAL-KIT',
-          quantity: parseInt(quantity),
-          price: kitPrice,
-        },
-      ],
-      shipping: {
-        name: `${formData.firstName} ${formData.lastName}`,
-        address: formData.address,
-        suburb: formData.city,
-        state: formData.state,
-        postcode: formData.postcode,
-        country: 'AU',
-      },
-      redirectConfirmUrl: `${window.location.origin}?order=${orderToken}&status=success`,
-      redirectCancelUrl: `${window.location.origin}?order=${orderToken}&status=cancelled`,
-    };
-
-    // Encode the order data and redirect to Afterpay
-    const encodedData = btoa(JSON.stringify(orderData));
-    window.location.href = `https://checkout.afterpay.com/checkout?data=${encodedData}&key=${apiKey}`;
-  };
 
   const handleSquarePayment = (e) => {
     e.preventDefault();
@@ -127,8 +80,6 @@ export default function Checkout() {
 
     if (selectedPayment === 'paypal') {
       handlePayPalPayment();
-    } else if (selectedPayment === 'afterpay') {
-      handleAfterpayPayment();
     } else if (selectedPayment === 'square') {
       handleSquarePayment(e);
     }
@@ -150,14 +101,6 @@ export default function Checkout() {
       description: 'Visa, Mastercard, AMEX — powered by Square',
       color: 'bg-gray-50 border-gray-200',
       activeColor: 'bg-gray-50 border-gray-500 ring-2 ring-gray-200',
-    },
-    {
-      id: 'afterpay',
-      name: 'Afterpay',
-      icon: <ShoppingBag size={20} />,
-      description: `4 interest-free payments of $${(kitPrice / 4).toFixed(2)}`,
-      color: 'bg-teal-50 border-teal-200',
-      activeColor: 'bg-teal-50 border-teal-500 ring-2 ring-teal-200',
     },
   ];
 
@@ -459,7 +402,7 @@ export default function Checkout() {
                     <span>30-day satisfaction guarantee</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <ShoppingBag size={16} className="text-brand-gold" />
+                    <Lock size={16} className="text-brand-gold" />
                     <span>Free standard shipping</span>
                   </div>
                 </div>
