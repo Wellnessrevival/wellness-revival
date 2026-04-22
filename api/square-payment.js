@@ -104,10 +104,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { sourceId, customerData, amount } = req.body;
+    const { customerData, amount, quantity } = req.body;
 
-    if (!sourceId || !customerData || !amount) {
+    if (!customerData || !amount) {
       return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    // Ensure customerData has quantity for order creation
+    if (quantity) {
+      customerData.quantity = quantity;
     }
 
     // Process payment with Square (if SQUARE_API_KEY is configured)

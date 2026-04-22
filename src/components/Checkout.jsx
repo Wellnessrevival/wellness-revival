@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ReactGA from 'react-ga4';
 import { CreditCard, Shield, Lock } from 'lucide-react';
 
 export default function Checkout() {
