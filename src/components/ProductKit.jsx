@@ -1,4 +1,4 @@
-import { Droplets, Sparkles, Shield, Leaf } from 'lucide-react';
+import { Droplets, Sparkles, Leaf } from 'lucide-react';
 
 export default function ProductKit() {
   return (
@@ -99,41 +99,7 @@ export default function ProductKit() {
           </div>
         </div>
 
-        {/* Individual products */}
-        <div className="mt-16">
-          <h3 className="text-center text-2xl font-bold text-brand-green-dark mb-8">Also Available Individually</h3>
-          <div className="grid sm:grid-cols-3 gap-6">
-            {[
-              {
-                icon: <Droplets size={32} className="text-brand-green" />,
-                name: 'Ultra BCP Oil',
-                desc: 'Our hero product. Supports your endocannabinoid system (CB2 receptors) to help restore balance from the inside out.',
-                tag: 'Systemic Support',
-              },
-              {
-                icon: <Sparkles size={32} className="text-brand-green" />,
-                name: "Bodease Balm",
-                desc: 'Targeted topical support for localised pain and inflammation. Apply directly where you need it most.',
-                tag: 'Topical Relief',
-              },
-              {
-                icon: <Shield size={32} className="text-brand-green" />,
-                name: 'Sleep in a Bottle',
-                desc: 'Supports your sleep and nervous system, helping you drift off naturally and wake feeling restored.',
-                tag: 'Sleep Support',
-              },
-            ].map((product, i) => (
-              <div key={i} className="bg-brand-cream rounded-2xl p-6 text-center border border-brand-cream-dark hover:shadow-md transition-shadow">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                  {product.icon}
-                </div>
-                <span className="text-brand-gold text-xs font-semibold uppercase tracking-wider">{product.tag}</span>
-                <h4 className="text-xl font-bold text-brand-green-dark mt-2 mb-3">{product.name}</h4>
-                <p className="text-brand-text-light text-sm leading-relaxed">{product.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+
       </div>
     </section>
   );
