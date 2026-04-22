@@ -8,184 +8,20 @@ const MAILCHIMP_API_KEY = process.env.MAILCHIMP_API_KEY;
 const MAILCHIMP_LIST_ID = process.env.MAILCHIMP_LIST_ID;
 const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN;
 const SQUARE_LOCATION_ID = process.env.SQUARE_LOCATION_ID;
-const PRODUCT_ID = 11748; // Wellness Revival Kit product ID
 
-// Square API client
+// Use sandbox URL for sandbox credentials, production for live
+const SQUARE_BASE_URL = SQUARE_ACCESS_TOKEN && SQUARE_ACCESS_TOKEN.startsWith('EAAA')
+  ? 'https://connect.squareupsandbox.com/v2'
+  : 'https://connect.squareup.com/v2';
+
 const squareClient = axios.create({
-  baseURL: 'https://connect.squareup.com/v2',
+  baseURL: SQUARE_BASE_URL,
   headers: {
     Authorization: `Bearer ${SQUARE_ACCESS_TOKEN}`,
     'Content-Type': 'application/json',
     'Square-Version': '2024-01-18',
   },
 });
-
-// Create WooCommerce order
-async function createWooCommerceOrder(customerData, amount, squarePaymentId) {
-  try {
-    const orderData = {
-      payment_method: 'square',
-      payment_method_title: 'Credit Card',
-      set_paid: true,
-      transaction_id: squarePaymentId,
-      billing: {
-        first_name: customerData.firstName,
-        last_name: customerData.lastName,
-        email: customerData.email,
-        phone: customerData.phone,
-        address_1: customerData.address,
-        city: customerData.city,
-        state: customerData.state,
-        postcode: customerData.postcode,
-        country: 'AU',
-      },
-      shipping: {
-        first_name: customerData.firstName,
-        last_name: customerData.lastName,
-        address_1: customerData.address,
-        city: customerData.city,
-        state: customerData.state,
-        postcode: customerData.postcode,
-        country: 'AU',
-      },
-      line_items: [
-        {
-          product_id: PRODUCT_ID,
-          quantity: customerData.quantity || 1,
-        },
-      ],
-      shipping_lines: [
-        {
-          method_id: 'free_shipping',
-          method_title: 'Free Shipping',
-          total: '0',
-        },
-      ],
-    };
-
-    const response = await axios.post(`${WOO_STORE_URL}/orders`, orderData, {
-      auth: {
-        username: WOO_CONSUMER_KEY,
-        password: WOO_CONSUMER_SECRET,
-      },
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error('WooCommerce order creation error:', error.response?.data || error.message);
-    throw error;
-  }
-}
-
-// Add customer to Mailchimp
-async function addToMailchimp(email, firstName, lastName, phone) {
-  try {
-    const datacenter = MAILCHIMP_API_KEY.split('-')[1];
-    const subscriberHash = crypto
-      .createHash('md5')
-      .update(email.toLowerCase())
-      .digest('hex');
-
-    const response = await axios.put(
-      `https://${datacenter}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members/${subscriberHash}`,
-      {
-        email_address: email,
-        status: 'subscribed',
-        merge_fields: {
-          FNAME: firstName,
-          LNAME: lastName,
-          PHONE: phone || '',
-        },
-        tags: ['wellness-revival-customer', 'landing-page-purchase'],
-      },
-      {
-        auth: {
-          username: 'anystring',
-          password: MAILCHIMP_API_KEY,
-        },
-      }
-    );
-
-    return response.data;
-  } catch (error) {
-    // If subscriber already exists, that's okay
-    if (error.response?.status === 400 && error.response?.data?.title === 'Member Exists') {
-      console.log('Subscriber already exists in Mailchimp');
-      return { status: 'already_exists' };
-    }
-    console.error('Mailchimp error:', error.response?.data || error.message);
-    throw error;
-  }
-}
-
-// Process payment with Square using Card Nonce
-async function processSquarePayment(cardNonce, amount, customerEmail, customerData) {
-  try {
-    const amountInCents = Math.round(parseFloat(amount) * 100);
-    const idempotencyKey = crypto.randomUUID();
-
-    // Create customer in Square first (optional but recommended)
-    let customerId = null;
-    try {
-      const customerResponse = await squareClient.post('/customers', {
-        given_name: customerData.firstName,
-        family_name: customerData.lastName,
-        email_address: customerEmail,
-        phone_number: customerData.phone,
-        address: {
-          address_line_1: customerData.address,
-          locality: customerData.city,
-          administrative_district_level_1: customerData.state,
-          postal_code: customerData.postcode,
-          country: 'AU',
-        },
-      });
-      customerId = customerResponse.data.customer.id;
-    } catch (error) {
-      console.log('Could not create Square customer (may already exist):', error.message);
-    }
-
-    // Process payment with the card nonce
-    const paymentData = {
-      source_id: cardNonce,
-      amount_money: {
-        amount: amountInCents,
-        currency: 'AUD',
-      },
-      location_id: SQUARE_LOCATION_ID,
-      idempotency_key: idempotencyKey,
-      customer_id: customerId || undefined,
-      note: `Wellness Revival Kit Purchase - ${customerEmail}`,
-      receipt_number_setting: 'SETTING_PRESENT',
-    };
-
-    // Remove undefined fields
-    Object.keys(paymentData).forEach(key => paymentData[key] === undefined && delete paymentData[key]);
-
-    const response = await squareClient.post('/payments', paymentData);
-
-    if (response.data.payment) {
-      return {
-        success: true,
-        paymentId: response.data.payment.id,
-        status: response.data.payment.status,
-        receiptUrl: response.data.payment.receipt_url,
-      };
-    } else {
-      throw new Error('Payment response missing payment data');
-    }
-  } catch (error) {
-    console.error('Square payment error:', error.response?.data || error.message);
-    
-    // Extract error message from Square API response
-    const errorMessage = error.response?.data?.errors?.[0]?.detail || 
-                        error.response?.data?.errors?.[0]?.message ||
-                        error.message ||
-                        'Payment processing failed';
-    
-    throw new Error(errorMessage);
-  }
-}
 
 export default async function handler(req, res) {
   // CORS headers
@@ -207,7 +43,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { customerData, amount, quantity, cardNonce } = req.body;
+    const { customerData, amount, quantity } = req.body;
 
     // Validate required fields
     if (!customerData || !amount) {
@@ -217,14 +53,6 @@ export default async function handler(req, res) {
       });
     }
 
-    if (!cardNonce) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing card nonce. Card tokenization failed.',
-      });
-    }
-
-    // Validate customer data
     if (!customerData.firstName || !customerData.lastName || !customerData.email) {
       return res.status(400).json({
         success: false,
@@ -232,49 +60,188 @@ export default async function handler(req, res) {
       });
     }
 
-    // Ensure customerData has quantity for order creation
-    if (quantity) {
-      customerData.quantity = quantity;
+    const amountInCents = Math.round(parseFloat(amount) * 100);
+    const idempotencyKey = crypto.randomUUID();
+    const qty = parseInt(quantity) || 1;
+
+    // Determine the redirect URL based on the request origin
+    const origin = req.headers.origin || req.headers.referer?.replace(/\/$/, '') || 'https://wellness-revival.vercel.app';
+    const redirectUrl = `${origin}/success`;
+
+    console.log(`Creating Square Payment Link for ${customerData.email}, amount: $${amount}, qty: ${qty}`);
+    console.log(`Square Base URL: ${SQUARE_BASE_URL}`);
+    console.log(`Location ID: ${SQUARE_LOCATION_ID}`);
+    console.log(`Redirect URL: ${redirectUrl}`);
+
+    // Create a Square Payment Link using the Checkout API
+    const paymentLinkPayload = {
+      idempotency_key: idempotencyKey,
+      quick_pay: {
+        name: 'Wellness Revival Kit',
+        price_money: {
+          amount: amountInCents,
+          currency: 'AUD',
+        },
+        location_id: SQUARE_LOCATION_ID,
+      },
+      checkout_options: {
+        redirect_url: redirectUrl,
+        ask_for_shipping_address: false,
+        accepted_payment_methods: {
+          apple_pay: true,
+          google_pay: true,
+        },
+      },
+      pre_populated_data: {
+        buyer_email: customerData.email,
+        buyer_phone_number: customerData.phone || undefined,
+        buyer_address: {
+          first_name: customerData.firstName,
+          last_name: customerData.lastName,
+          address_line_1: customerData.address,
+          locality: customerData.city,
+          administrative_district_level_1: customerData.state,
+          postal_code: customerData.postcode,
+          country: 'AU',
+        },
+      },
+      payment_note: `Wellness Revival Kit - ${customerData.firstName} ${customerData.lastName} (${customerData.email})`,
+    };
+
+    // Remove undefined fields from pre_populated_data
+    if (!customerData.phone) {
+      delete paymentLinkPayload.pre_populated_data.buyer_phone_number;
     }
 
-    // Process payment with Square
-    console.log(`Processing Square payment for ${customerData.email}, amount: $${amount}`);
-    const paymentResult = await processSquarePayment(cardNonce, amount, customerData.email, customerData);
+    console.log('Sending payment link request to Square...');
 
-    if (!paymentResult || !paymentResult.success) {
-      return res.status(400).json({
+    const response = await squareClient.post('/online-checkout/payment-links', paymentLinkPayload);
+
+    if (response.data && response.data.payment_link) {
+      const checkoutUrl = response.data.payment_link.long_url || response.data.payment_link.url;
+      const squareOrderId = response.data.payment_link.order_id;
+
+      console.log(`Square Payment Link created: ${checkoutUrl}`);
+      console.log(`Square Order ID: ${squareOrderId}`);
+
+      // Store customer data for later use by the success/webhook handler
+      // We'll also create the WooCommerce order and add to Mailchimp now
+      // since we have the customer data available
+      try {
+        // Create WooCommerce order (set as pending payment)
+        const orderData = {
+          payment_method: 'square',
+          payment_method_title: 'Credit Card (Square)',
+          set_paid: false, // Will be set to paid when Square confirms payment
+          status: 'pending',
+          transaction_id: squareOrderId,
+          billing: {
+            first_name: customerData.firstName,
+            last_name: customerData.lastName,
+            email: customerData.email,
+            phone: customerData.phone || '',
+            address_1: customerData.address,
+            city: customerData.city,
+            state: customerData.state,
+            postcode: customerData.postcode,
+            country: 'AU',
+          },
+          shipping: {
+            first_name: customerData.firstName,
+            last_name: customerData.lastName,
+            address_1: customerData.address,
+            city: customerData.city,
+            state: customerData.state,
+            postcode: customerData.postcode,
+            country: 'AU',
+          },
+          line_items: [
+            {
+              product_id: 11748,
+              quantity: qty,
+            },
+          ],
+          shipping_lines: [
+            {
+              method_id: 'free_shipping',
+              method_title: 'Free Shipping',
+              total: '0',
+            },
+          ],
+        };
+
+        const wooResponse = await axios.post(`${WOO_STORE_URL}/orders`, orderData, {
+          auth: {
+            username: WOO_CONSUMER_KEY,
+            password: WOO_CONSUMER_SECRET,
+          },
+        });
+
+        console.log(`WooCommerce order created: ${wooResponse.data.id} (pending)`);
+      } catch (wooError) {
+        console.error('WooCommerce order creation error (non-blocking):', wooError.response?.data || wooError.message);
+        // Don't block the checkout if WooCommerce fails
+      }
+
+      // Add to Mailchimp
+      try {
+        const datacenter = MAILCHIMP_API_KEY?.split('-')[1];
+        if (datacenter) {
+          const subscriberHash = crypto
+            .createHash('md5')
+            .update(customerData.email.toLowerCase())
+            .digest('hex');
+
+          await axios.put(
+            `https://${datacenter}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members/${subscriberHash}`,
+            {
+              email_address: customerData.email,
+              status: 'subscribed',
+              merge_fields: {
+                FNAME: customerData.firstName,
+                LNAME: customerData.lastName,
+                PHONE: customerData.phone || '',
+              },
+              tags: ['wellness-revival-customer', 'landing-page-purchase'],
+            },
+            {
+              auth: {
+                username: 'anystring',
+                password: MAILCHIMP_API_KEY,
+              },
+            }
+          );
+          console.log(`Added ${customerData.email} to Mailchimp`);
+        }
+      } catch (mcError) {
+        console.error('Mailchimp error (non-blocking):', mcError.response?.data || mcError.message);
+        // Don't block the checkout if Mailchimp fails
+      }
+
+      return res.status(200).json({
+        success: true,
+        checkoutUrl: checkoutUrl,
+        squareOrderId: squareOrderId,
+        message: 'Payment link created successfully',
+      });
+    } else {
+      console.error('Square response missing payment_link:', JSON.stringify(response.data));
+      return res.status(500).json({
         success: false,
-        error: paymentResult?.error || 'Payment processing failed',
+        error: 'Failed to create payment link',
       });
     }
-
-    // Create WooCommerce order
-    console.log(`Creating WooCommerce order for payment ${paymentResult.paymentId}`);
-    const wooOrder = await createWooCommerceOrder(customerData, amount, paymentResult.paymentId);
-
-    // Add customer to Mailchimp
-    console.log(`Adding customer ${customerData.email} to Mailchimp`);
-    await addToMailchimp(
-      customerData.email,
-      customerData.firstName,
-      customerData.lastName,
-      customerData.phone
-    );
-
-    console.log(`Order completed successfully: WooCommerce ID ${wooOrder.id}, Square Payment ID ${paymentResult.paymentId}`);
-
-    return res.status(200).json({
-      success: true,
-      orderId: wooOrder.id,
-      orderNumber: wooOrder.number,
-      paymentId: paymentResult.paymentId,
-      message: 'Payment processed successfully and order created',
-    });
   } catch (error) {
-    console.error('Payment processing error:', error);
+    console.error('Square payment link error:', error.response?.data || error.message);
+
+    const errorDetail = error.response?.data?.errors?.[0]?.detail ||
+                       error.response?.data?.errors?.[0]?.message ||
+                       error.message ||
+                       'Payment setup failed';
+
     return res.status(500).json({
       success: false,
-      error: error.message || 'Payment processing failed. Please try again.',
+      error: errorDetail,
     });
   }
 }

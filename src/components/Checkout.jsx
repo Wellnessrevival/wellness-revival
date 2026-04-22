@@ -6,12 +6,6 @@ export default function Checkout() {
   const [selectedPayment, setSelectedPayment] = useState('paypal');
   const [quantity, setQuantity] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cardData, setCardData] = useState({
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
-  });
-  const [showSquareForm, setShowSquareForm] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -31,11 +25,6 @@ export default function Checkout() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleCardChange = (e) => {
-    const { name, value } = e.target;
-    setCardData({ ...cardData, [name]: value });
-  };
-
   const validateForm = () => {
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.address || !formData.city || !formData.state || !formData.postcode) {
       alert('Please fill in all required fields');
@@ -44,26 +33,9 @@ export default function Checkout() {
     return true;
   };
 
-  const validateCardData = () => {
-    if (!cardData.cardNumber || !cardData.expiryDate || !cardData.cvv) {
-      alert('Please enter all card details');
-      return false;
-    }
-    if (cardData.cardNumber.replace(/\s/g, '').length < 13) {
-      alert('Please enter a valid card number');
-      return false;
-    }
-    if (cardData.cvv.length < 3) {
-      alert('Please enter a valid CVV');
-      return false;
-    }
-    return true;
-  };
-
   const handlePayPalPayment = () => {
     if (!validateForm()) return;
 
-    // Track payment method selection
     ReactGA.event({
       category: 'checkout',
       action: 'payment_method_selected',
@@ -71,7 +43,6 @@ export default function Checkout() {
       value: parseFloat(total),
     });
 
-    // Track form submission
     ReactGA.event({
       category: 'checkout',
       action: 'form_submitted',
@@ -81,10 +52,9 @@ export default function Checkout() {
 
     setIsProcessing(true);
     
-    // Construct PayPal redirect URL
     const paypalParams = new URLSearchParams({
       cmd: '_xclick',
-      business: 'W7GGQ7GFAJ2L6', // PayPal Merchant ID
+      business: 'W7GGQ7GFAJ2L6',
       item_name: 'Wellness Revival Kit',
       item_number: 'WELLNESS-REVIVAL-KIT',
       amount: total,
@@ -106,64 +76,30 @@ export default function Checkout() {
       notify_url: `${window.location.origin}/api/paypal-webhook`,
     });
 
-    // Redirect to PayPal
     window.location.href = `https://www.paypal.com/cgi-bin/webscr?${paypalParams.toString()}`;
   };
 
-  const handleSquarePayment = async (e) => {
-    e.preventDefault();
-    
+  const handleSquarePayment = async () => {
     if (!validateForm()) return;
-    if (!validateCardData()) return;
+
+    ReactGA.event({
+      category: 'checkout',
+      action: 'payment_method_selected',
+      label: 'square',
+      value: parseFloat(total),
+    });
+
+    ReactGA.event({
+      category: 'checkout',
+      action: 'form_submitted',
+      label: 'square_payment',
+      value: parseFloat(total),
+    });
 
     setIsProcessing(true);
 
     try {
-      // Track payment method selection
-      ReactGA.event({
-        category: 'checkout',
-        action: 'payment_method_selected',
-        label: 'square',
-        value: parseFloat(total),
-      });
-
-      // Track form submission
-      ReactGA.event({
-        category: 'checkout',
-        action: 'form_submitted',
-        label: 'square_payment',
-        value: parseFloat(total),
-      });
-
-      // Generate card nonce using Square's Web Payments SDK
-      let cardNonce = null;
-      
-      // Check if Square Web Payments SDK is available
-      if (window.Square) {
-        try {
-          const payments = window.Square.payments('sandbox-sq0idb-0qfQ1feLUiMN2J2mWjbBig');
-          const card = await payments.card();
-          await card.attach('#sq-card-container');
-          
-          const tokenResult = await payments.requestCardNonce();
-          if (tokenResult.status === 'OK') {
-            cardNonce = tokenResult.token;
-          } else {
-            const errors = tokenResult.errors || [];
-            throw new Error(errors.map(e => e.message).join(', ') || 'Card tokenization failed');
-          }
-        } catch (error) {
-          console.log('Square SDK not available, using test nonce');
-          // For testing without Square SDK, generate a test nonce
-          cardNonce = `cnp_${Math.random().toString(36).substr(2, 9)}`;
-        }
-      } else {
-        // Fallback: generate a test nonce for development
-        console.log('Square SDK not loaded, using test nonce');
-        cardNonce = `cnp_${Math.random().toString(36).substr(2, 9)}`;
-      }
-
-      // Send payment to backend for processing
+      // Call backend to create a Square Payment Link
       const response = await fetch('/api/square-payment', {
         method: 'POST',
         headers: {
@@ -173,48 +109,21 @@ export default function Checkout() {
           customerData: formData,
           amount: total,
           quantity: quantity,
-          cardNonce: cardNonce,
         }),
       });
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
-        // Track successful order
-        ReactGA.event({
-          category: 'checkout',
-          action: 'order_completed',
-          label: 'square_payment',
-          value: parseFloat(total),
-        });
-
-        alert(`Order Confirmed!\n\nOrder ID: ${data.orderId}\n\nThank you for your purchase. Your Wellness Revival Kit will be shipped shortly.\n\nA confirmation email has been sent to ${formData.email}`);
-        
-        // Reset form
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          address: '',
-          city: '',
-          state: '',
-          postcode: '',
-        });
-        setCardData({
-          cardNumber: '',
-          expiryDate: '',
-          cvv: '',
-        });
-        setShowSquareForm(false);
-        setSelectedPayment('paypal');
+      if (response.ok && data.success && data.checkoutUrl) {
+        // Redirect to Square's hosted checkout page
+        window.location.href = data.checkoutUrl;
       } else {
-        alert(`Payment processing failed: ${data.error || 'Please try again.'}`);
+        alert(`Payment setup failed: ${data.error || 'Please try again.'}`);
+        setIsProcessing(false);
       }
     } catch (error) {
       console.error('Payment error:', error);
-      alert('An error occurred while processing your payment. Please try again.');
-    } finally {
+      alert('An error occurred while setting up your payment. Please try again.');
       setIsProcessing(false);
     }
   };
@@ -225,11 +134,7 @@ export default function Checkout() {
     if (selectedPayment === 'paypal') {
       handlePayPalPayment();
     } else if (selectedPayment === 'square') {
-      if (showSquareForm) {
-        handleSquarePayment(e);
-      } else {
-        setShowSquareForm(true);
-      }
+      handleSquarePayment();
     }
   };
 
@@ -317,7 +222,6 @@ export default function Checkout() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      required
                       className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                       placeholder="0412 345 678"
                     />
@@ -341,7 +245,7 @@ export default function Checkout() {
                       placeholder="123 Wellness Street"
                     />
                   </div>
-                  <div className="grid sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-brand-text mb-1.5">City / Suburb</label>
                       <input
@@ -361,7 +265,7 @@ export default function Checkout() {
                         value={formData.state}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                       >
                         <option value="">Select</option>
                         <option value="NSW">NSW</option>
@@ -406,10 +310,7 @@ export default function Checkout() {
                         name="payment"
                         value={method.id}
                         checked={selectedPayment === method.id}
-                        onChange={(e) => {
-                          setSelectedPayment(e.target.value);
-                          setShowSquareForm(false);
-                        }}
+                        onChange={(e) => setSelectedPayment(e.target.value)}
                         className="mt-1 mr-3"
                       />
                       <div className="flex-1">
@@ -423,56 +324,15 @@ export default function Checkout() {
                   ))}
                 </div>
 
-                {/* Square Card Form */}
-                {selectedPayment === 'square' && showSquareForm && (
-                  <div className="mt-6 p-4 border-2 border-brand-gold rounded-xl bg-brand-cream space-y-4">
-                    <label className="block text-sm font-medium text-brand-text">Card Details</label>
-                    
-                    <div>
-                      <label className="block text-xs font-medium text-brand-text mb-1">Card Number</label>
-                      <input
-                        type="text"
-                        name="cardNumber"
-                        value={cardData.cardNumber}
-                        onChange={handleCardChange}
-                        placeholder="4111 1111 1111 1111"
-                        maxLength="19"
-                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold text-sm"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-brand-text mb-1">Expiry (MM/YY)</label>
-                        <input
-                          type="text"
-                          name="expiryDate"
-                          value={cardData.expiryDate}
-                          onChange={handleCardChange}
-                          placeholder="12/25"
-                          maxLength="5"
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-brand-text mb-1">CVV</label>
-                        <input
-                          type="text"
-                          name="cvv"
-                          value={cardData.cvv}
-                          onChange={handleCardChange}
-                          placeholder="123"
-                          maxLength="4"
-                          className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold text-sm"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {selectedPayment === 'paypal' && (
                   <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
                     You will be securely redirected to PayPal to complete your payment.
+                  </div>
+                )}
+
+                {selectedPayment === 'square' && (
+                  <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+                    You will be securely redirected to Square to enter your card details and complete your payment.
                   </div>
                 )}
               </div>
@@ -539,7 +399,7 @@ export default function Checkout() {
                   disabled={isProcessing}
                   className="w-full bg-brand-gold hover:bg-brand-gold-dark text-white font-bold py-4 px-6 rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed mb-4"
                 >
-                  {isProcessing ? 'Processing...' : showSquareForm && selectedPayment === 'square' ? `Pay $${total}` : 'Complete Your Order'}
+                  {isProcessing ? 'Processing...' : 'Complete Your Order'}
                 </button>
 
                 {/* Trust Badges */}
