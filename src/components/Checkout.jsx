@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import ReactGA from 'react-ga4';
 import { CreditCard, Shield, Lock } from 'lucide-react';
 
@@ -6,11 +6,12 @@ export default function Checkout() {
   const [selectedPayment, setSelectedPayment] = useState('paypal');
   const [quantity, setQuantity] = useState(1);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [cardData, setCardData] = useState({
+    cardNumber: '',
+    expiryDate: '',
+    cvv: '',
+  });
   const [showSquareForm, setShowSquareForm] = useState(false);
-  const [isCardReady, setIsCardReady] = useState(false);
-  const cardContainerRef = useRef(null);
-  const paymentsRef = useRef(null);
-  const cardRef = useRef(null);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -30,9 +31,30 @@ export default function Checkout() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleCardChange = (e) => {
+    const { name, value } = e.target;
+    setCardData({ ...cardData, [name]: value });
+  };
+
   const validateForm = () => {
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.address || !formData.city || !formData.state || !formData.postcode) {
       alert('Please fill in all required fields');
+      return false;
+    }
+    return true;
+  };
+
+  const validateCardData = () => {
+    if (!cardData.cardNumber || !cardData.expiryDate || !cardData.cvv) {
+      alert('Please enter all card details');
+      return false;
+    }
+    if (cardData.cardNumber.replace(/\s/g, '').length < 13) {
+      alert('Please enter a valid card number');
+      return false;
+    }
+    if (cardData.cvv.length < 3) {
+      alert('Please enter a valid CVV');
       return false;
     }
     return true;
@@ -88,48 +110,11 @@ export default function Checkout() {
     window.location.href = `https://www.paypal.com/cgi-bin/webscr?${paypalParams.toString()}`;
   };
 
-  const initializeSquarePayment = async () => {
-    if (showSquareForm) {
-      setShowSquareForm(false);
-      return;
-    }
-
-    if (!validateForm()) return;
-
-    try {
-      setShowSquareForm(true);
-      
-      // Initialize Square Web Payments SDK
-      if (!window.Square) {
-        throw new Error('Square SDK not loaded');
-      }
-
-      const payments = window.Square.payments('sandbox-sq0idb-0qfQ1feLUiMN2J2mWjbBig');
-      paymentsRef.current = payments;
-
-      // Create card payment method
-      const card = await payments.card();
-      cardRef.current = card;
-      
-      await card.attach(cardContainerRef.current);
-      
-      card.addEventListener('change', (state) => {
-        setIsCardReady(state.complete);
-      });
-    } catch (error) {
-      console.error('Square initialization error:', error);
-      alert('Failed to initialize payment form. Please try again.');
-      setShowSquareForm(false);
-    }
-  };
-
   const handleSquarePayment = async (e) => {
     e.preventDefault();
     
-    if (!isCardReady) {
-      alert('Please enter valid card details');
-      return;
-    }
+    if (!validateForm()) return;
+    if (!validateCardData()) return;
 
     setIsProcessing(true);
 
@@ -150,57 +135,53 @@ export default function Checkout() {
         value: parseFloat(total),
       });
 
-      // Request a payment token
-      const result = await paymentsRef.current.requestCardNonce();
+      // Send payment to backend for processing
+      const response = await fetch('/api/square-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerData: formData,
+          amount: total,
+          quantity: quantity,
+          cardData: cardData,
+        }),
+      });
 
-      if (result.status === 'OK') {
-        const sourceId = result.nonce;
+      const data = await response.json();
 
-        // Send payment to backend for processing
-        const response = await fetch('/api/square-payment', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            customerData: formData,
-            amount: total,
-            quantity: quantity,
-            sourceId: sourceId,
-          }),
+      if (response.ok && data.success) {
+        // Track successful order
+        ReactGA.event({
+          category: 'checkout',
+          action: 'order_completed',
+          label: 'square_payment',
+          value: parseFloat(total),
         });
 
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-          // Track successful order
-          ReactGA.event({
-            category: 'checkout',
-            action: 'order_completed',
-            label: 'square_payment',
-            value: parseFloat(total),
-          });
-
-          alert(`Order Confirmed!\n\nOrder ID: ${data.orderId}\n\nThank you for your purchase. Your Wellness Revival Kit will be shipped shortly.\n\nA confirmation email has been sent to ${formData.email}`);
-          
-          // Reset form
-          setFormData({
-            firstName: '',
-            lastName: '',
-            email: '',
-            phone: '',
-            address: '',
-            city: '',
-            state: '',
-            postcode: '',
-          });
-          setShowSquareForm(false);
-          setSelectedPayment('paypal');
-        } else {
-          alert(`Payment processing failed: ${data.error || 'Please try again.'}`);
-        }
-      } else if (result.errors && result.errors.length > 0) {
-        alert(`Card error: ${result.errors[0].message}`);
+        alert(`Order Confirmed!\n\nOrder ID: ${data.orderId}\n\nThank you for your purchase. Your Wellness Revival Kit will be shipped shortly.\n\nA confirmation email has been sent to ${formData.email}`);
+        
+        // Reset form
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          address: '',
+          city: '',
+          state: '',
+          postcode: '',
+        });
+        setCardData({
+          cardNumber: '',
+          expiryDate: '',
+          cvv: '',
+        });
+        setShowSquareForm(false);
+        setSelectedPayment('paypal');
+      } else {
+        alert(`Payment processing failed: ${data.error || 'Please try again.'}`);
       }
     } catch (error) {
       console.error('Payment error:', error);
@@ -219,7 +200,7 @@ export default function Checkout() {
       if (showSquareForm) {
         handleSquarePayment(e);
       } else {
-        initializeSquarePayment();
+        setShowSquareForm(true);
       }
     }
   };
@@ -416,13 +397,48 @@ export default function Checkout() {
 
                 {/* Square Card Form */}
                 {selectedPayment === 'square' && showSquareForm && (
-                  <div className="mt-6 p-4 border-2 border-brand-gold rounded-xl bg-brand-cream">
-                    <label className="block text-sm font-medium text-brand-text mb-3">Card Details</label>
-                    <div
-                      ref={cardContainerRef}
-                      className="bg-white rounded-lg p-4 border border-gray-300"
-                      style={{ minHeight: '200px' }}
-                    />
+                  <div className="mt-6 p-4 border-2 border-brand-gold rounded-xl bg-brand-cream space-y-4">
+                    <label className="block text-sm font-medium text-brand-text">Card Details</label>
+                    
+                    <div>
+                      <label className="block text-xs font-medium text-brand-text mb-1">Card Number</label>
+                      <input
+                        type="text"
+                        name="cardNumber"
+                        value={cardData.cardNumber}
+                        onChange={handleCardChange}
+                        placeholder="4111 1111 1111 1111"
+                        maxLength="19"
+                        className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold text-sm"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-medium text-brand-text mb-1">Expiry (MM/YY)</label>
+                        <input
+                          type="text"
+                          name="expiryDate"
+                          value={cardData.expiryDate}
+                          onChange={handleCardChange}
+                          placeholder="12/25"
+                          maxLength="5"
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-brand-text mb-1">CVV</label>
+                        <input
+                          type="text"
+                          name="cvv"
+                          value={cardData.cvv}
+                          onChange={handleCardChange}
+                          placeholder="123"
+                          maxLength="4"
+                          className="w-full px-4 py-3 rounded-lg border border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold text-sm"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
 

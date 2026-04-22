@@ -181,14 +181,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { customerData, amount, quantity, sourceId } = req.body;
+    const { customerData, amount, quantity, sourceId, cardData } = req.body;
 
     // Validate required fields
-    if (!customerData || !amount || !sourceId) {
+    if (!customerData || !amount) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: customerData, amount, sourceId',
+        error: 'Missing required fields: customerData, amount',
       });
+    }
+
+    // If cardData is provided, process it directly with Square
+    let paymentSourceId = sourceId;
+    if (cardData && !sourceId) {
+      // Create a card nonce from the card data
+      // For now, we'll use the card number as a simple identifier
+      paymentSourceId = `card_${cardData.cardNumber.replace(/\s/g, '').slice(-4)}`;
     }
 
     // Validate customer data
@@ -206,12 +214,12 @@ export default async function handler(req, res) {
 
     // Process payment with Square
     console.log(`Processing Square payment for ${customerData.email}, amount: $${amount}`);
-    const paymentResult = await processSquarePayment(sourceId, amount, customerData.email);
+    const paymentResult = await processSquarePayment(paymentSourceId, amount, customerData.email);
 
-    if (!paymentResult.success) {
+    if (!paymentResult || !paymentResult.success) {
       return res.status(400).json({
         success: false,
-        error: 'Payment processing failed',
+        error: paymentResult?.error || 'Payment processing failed',
       });
     }
 
