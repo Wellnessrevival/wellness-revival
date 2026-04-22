@@ -111,9 +111,16 @@ export default async function handler(req, res) {
       },
     };
 
-    // Add phone if provided
+    // Add phone if provided - Square requires E.164 format (+61XXXXXXXXX for Australia)
     if (customerData.phone) {
-      paymentLinkPayload.pre_populated_data.buyer_phone_number = customerData.phone;
+      let phone = customerData.phone.replace(/\s+/g, '').replace(/[^0-9+]/g, '');
+      // Convert Australian mobile (04XXXXXXXX) to E.164 (+614XXXXXXXX)
+      if (phone.startsWith('0')) {
+        phone = '+61' + phone.substring(1);
+      } else if (!phone.startsWith('+')) {
+        phone = '+61' + phone;
+      }
+      paymentLinkPayload.pre_populated_data.buyer_phone_number = phone;
     }
 
     console.log('Sending payment link request to Square...');
