@@ -5,6 +5,8 @@ export default function Checkout() {
   const [selectedPayment, setSelectedPayment] = useState('paypal');
   const [quantity, setQuantity] = useState(1);
   const [paypalReady, setPaypalReady] = useState(false);
+  const [squareReady, setSquareReady] = useState(false);
+  const [afterpayReady, setAfterpayReady] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -101,6 +103,51 @@ export default function Checkout() {
     }
   }, [selectedPayment, formData, total, quantity]);
 
+  // Initialize Square Web Payments SDK
+  useEffect(() => {
+    if (selectedPayment === 'square' && !squareReady) {
+      const initSquare = async () => {
+        try {
+          const { web } = await window.Square;
+          const payments = web.payments({
+            applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID,
+            environment: 'production',
+          });
+          setSquareReady(true);
+          console.log('Square SDK initialized');
+        } catch (error) {
+          console.error('Error initializing Square:', error);
+        }
+      };
+      
+      if (window.Square) {
+        initSquare();
+      }
+    }
+  }, [selectedPayment, squareReady]);
+
+  // Initialize Afterpay
+  useEffect(() => {
+    if (selectedPayment === 'afterpay' && !afterpayReady) {
+      const initAfterpay = async () => {
+        try {
+          if (window.AfterPay) {
+            window.AfterPay.init({
+              countryCode: 'AU',
+              merchantId: import.meta.env.VITE_AFTERPAY_MERCHANT_ID,
+            });
+            setAfterpayReady(true);
+            console.log('Afterpay SDK initialized');
+          }
+        } catch (error) {
+          console.error('Error initializing Afterpay:', error);
+        }
+      };
+      
+      initAfterpay();
+    }
+  }, [selectedPayment, afterpayReady]);
+
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -142,8 +189,81 @@ export default function Checkout() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (selectedPayment !== 'paypal') {
-      alert(`Thank you! Your order for ${quantity} Wellness Revival Kit(s) will be processed via ${selectedPayment}. Total: $${total} AUD.\n\nIn production, this would redirect to the ${selectedPayment} payment gateway.`);
+    
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.address || !formData.city || !formData.state || !formData.postcode) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    if (selectedPayment === 'square') {
+      handleSquarePayment();
+    } else if (selectedPayment === 'afterpay') {
+      handleAfterpayPayment();
+    } else if (selectedPayment === 'bank') {
+      alert(`Thank you! Your order for ${quantity} Wellness Revival Kit(s) has been created.\n\nPlease transfer $${total} AUD to:\nAccount Name: CE and JA Collins\nBSB: 062-551\nAccount: 10305758\n\nUse your order number as the reference. Your kit will be shipped once payment is confirmed.`);
+    }
+  };
+
+  const handleSquarePayment = async () => {
+    try {
+      const { web } = await window.Square;
+      const payments = web.payments({
+        applicationId: import.meta.env.VITE_SQUARE_APPLICATION_ID,
+        environment: 'production',
+      });
+
+      const card = await payments.card();
+      await card.attach('#square-card-container');
+
+      const result = await payments.requestCardPayment({
+        sourceId: (await card.tokenize()).token,
+        amount: Math.round(total * 100),
+        currency: 'AUD',
+        intent: 'CHARGE',
+        verificationDetails: {
+          intent: 'CHARGE',
+        },
+      });
+
+      if (result.status === 'OK') {
+        alert(`Thank you! Your payment of $${total} AUD has been processed successfully. Order ID: ${result.result.payment.id}`);
+        console.log('Square payment successful:', result);
+      }
+    } catch (error) {
+      alert('Payment failed. Please try again.');
+      console.error('Square payment error:', error);
+    }
+  };
+
+  const handleAfterpayPayment = async () => {
+    try {
+      if (window.AfterPay) {
+        const token = await window.AfterPay.getToken();
+        
+        // Send payment to backend
+        const response = await fetch('/api/afterpay/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token,
+            amount: Math.round(total * 100),
+            currency: 'AUD',
+            customer: formData,
+          }),
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+          alert(`Thank you! Your Afterpay order has been created. Order ID: ${data.orderId}`);
+          console.log('Afterpay payment successful:', data);
+        } else {
+          alert('Afterpay payment failed. Please try again.');
+        }
+      }
+    } catch (error) {
+      alert('Afterpay payment failed. Please try again.');
+      console.error('Afterpay payment error:', error);
     }
   };
 
@@ -324,6 +444,20 @@ export default function Checkout() {
                 {/* PayPal button container */}
                 {selectedPayment === 'paypal' && (
                   <div id="paypal-button-container" className="mt-4"></div>
+                )}
+
+                {/* Square card container */}
+                {selectedPayment === 'square' && (
+                  <div id="square-card-container" className="mt-4"></div>
+                )}
+
+                {/* Afterpay container */}
+                {selectedPayment === 'afterpay' && (
+                  <div id="afterpay-container" className="mt-4 bg-teal-50 rounded-xl p-4 border border-teal-200">
+                    <p className="text-sm text-teal-700 font-medium">
+                      Pay in 4 interest-free installments of ${(total / 4).toFixed(2)} AUD with Afterpay
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
