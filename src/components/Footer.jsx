@@ -8,7 +8,7 @@ export default function Footer() {
           <div className="sm:col-span-2 lg:col-span-1">
             <h3 className="font-[var(--font-heading)] text-xl font-semibold mb-4">Canna Oils</h3>
             <p className="text-white/70 text-sm leading-relaxed mb-4">
-              Helping Australian women feel like themselves again through natural, plant-based wellness support.
+              Helping Australians feel like themselves again through natural, plant-based wellness support.
             </p>
             <p className="text-white/50 text-xs">Australian Owned & Operated</p>
           </div>
