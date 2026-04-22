@@ -70,41 +70,48 @@ export default function Checkout() {
 
     setIsProcessing(true);
 
-    // Construct Afterpay redirect URL
-    const afterpayParams = new URLSearchParams({
-      token: `AFTERPAY-${Date.now()}`,
-      amount: total,
+    // Create Afterpay order token
+    const orderToken = `WR-${Date.now()}`;
+    const apiKey = '0c54227b-5bbd-4fcb-b068-352d35d605b1';
+    
+    // Construct Afterpay checkout URL with proper parameters
+    const afterpayCheckoutUrl = new URL('https://checkout.afterpay.com/checkout');
+    
+    const orderData = {
+      token: orderToken,
+      amount: parseFloat(total),
       currency: 'AUD',
-      merchantId: '154331', // Afterpay Merchant ID
-      redirectConfirmUrl: `${window.location.origin}/success?method=afterpay`,
-      redirectCancelUrl: `${window.location.origin}`,
-      consumer: JSON.stringify({
+      merchantId: '154331',
+      consumer: {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
         phone: formData.phone,
-      }),
-      items: JSON.stringify([
+      },
+      items: [
         {
           name: 'Wellness Revival Kit',
           description: 'Ultra BCP Oil (15ml) + Bodease Balm (10g) + Free Shipping',
           sku: 'WELLNESS-REVIVAL-KIT',
-          quantity: quantity,
+          quantity: parseInt(quantity),
           price: kitPrice,
         },
-      ]),
-      shipping: JSON.stringify({
+      ],
+      shipping: {
         name: `${formData.firstName} ${formData.lastName}`,
         address: formData.address,
         suburb: formData.city,
         state: formData.state,
         postcode: formData.postcode,
         country: 'AU',
-      }),
-    });
+      },
+      redirectConfirmUrl: `${window.location.origin}?order=${orderToken}&status=success`,
+      redirectCancelUrl: `${window.location.origin}?order=${orderToken}&status=cancelled`,
+    };
 
-    // Redirect to Afterpay
-    window.location.href = `https://portal.afterpay.com/checkout?${afterpayParams.toString()}`;
+    // Encode the order data and redirect to Afterpay
+    const encodedData = btoa(JSON.stringify(orderData));
+    window.location.href = `https://checkout.afterpay.com/checkout?data=${encodedData}&key=${apiKey}`;
   };
 
   const handleSquarePayment = (e) => {
