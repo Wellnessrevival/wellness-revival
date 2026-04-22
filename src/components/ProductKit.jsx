@@ -33,10 +33,7 @@ export default function ProductKit() {
                   <Sparkles size={18} className="text-brand-gold flex-shrink-0" />
                   <span><strong className="text-white">Bodease Balm</strong> — 10g topical for targeted relief</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Leaf size={18} className="text-brand-gold flex-shrink-0" />
-                  <span><strong className="text-white">Wellness Guide</strong> — Tips to complement your journey</span>
-                </div>
+
               </div>
             </div>
 
