@@ -118,23 +118,49 @@ async function addToMailchimp(email, firstName, lastName, phone) {
   }
 }
 
-// Process payment with Square
-async function processSquarePayment(sourceId, amount, customerEmail) {
+// Process payment with Square using Card Nonce
+async function processSquarePayment(cardNonce, amount, customerEmail, customerData) {
   try {
     const amountInCents = Math.round(parseFloat(amount) * 100);
     const idempotencyKey = crypto.randomUUID();
 
+    // Create customer in Square first (optional but recommended)
+    let customerId = null;
+    try {
+      const customerResponse = await squareClient.post('/customers', {
+        given_name: customerData.firstName,
+        family_name: customerData.lastName,
+        email_address: customerEmail,
+        phone_number: customerData.phone,
+        address: {
+          address_line_1: customerData.address,
+          locality: customerData.city,
+          administrative_district_level_1: customerData.state,
+          postal_code: customerData.postcode,
+          country: 'AU',
+        },
+      });
+      customerId = customerResponse.data.customer.id;
+    } catch (error) {
+      console.log('Could not create Square customer (may already exist):', error.message);
+    }
+
+    // Process payment with the card nonce
     const paymentData = {
-      source_id: sourceId,
+      source_id: cardNonce,
       amount_money: {
         amount: amountInCents,
         currency: 'AUD',
       },
       location_id: SQUARE_LOCATION_ID,
       idempotency_key: idempotencyKey,
-      customer_id: customerEmail, // Use email as customer identifier
+      customer_id: customerId || undefined,
       note: `Wellness Revival Kit Purchase - ${customerEmail}`,
+      receipt_number_setting: 'SETTING_PRESENT',
     };
+
+    // Remove undefined fields
+    Object.keys(paymentData).forEach(key => paymentData[key] === undefined && delete paymentData[key]);
 
     const response = await squareClient.post('/payments', paymentData);
 
@@ -181,7 +207,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { customerData, amount, quantity, sourceId, cardData } = req.body;
+    const { customerData, amount, quantity, cardNonce } = req.body;
 
     // Validate required fields
     if (!customerData || !amount) {
@@ -191,12 +217,11 @@ export default async function handler(req, res) {
       });
     }
 
-    // If cardData is provided, process it directly with Square
-    let paymentSourceId = sourceId;
-    if (cardData && !sourceId) {
-      // Create a card nonce from the card data
-      // For now, we'll use the card number as a simple identifier
-      paymentSourceId = `card_${cardData.cardNumber.replace(/\s/g, '').slice(-4)}`;
+    if (!cardNonce) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing card nonce. Card tokenization failed.',
+      });
     }
 
     // Validate customer data
@@ -214,7 +239,7 @@ export default async function handler(req, res) {
 
     // Process payment with Square
     console.log(`Processing Square payment for ${customerData.email}, amount: $${amount}`);
-    const paymentResult = await processSquarePayment(paymentSourceId, amount, customerData.email);
+    const paymentResult = await processSquarePayment(cardNonce, amount, customerData.email, customerData);
 
     if (!paymentResult || !paymentResult.success) {
       return res.status(400).json({

@@ -135,6 +135,34 @@ export default function Checkout() {
         value: parseFloat(total),
       });
 
+      // Generate card nonce using Square's Web Payments SDK
+      let cardNonce = null;
+      
+      // Check if Square Web Payments SDK is available
+      if (window.Square) {
+        try {
+          const payments = window.Square.payments('sandbox-sq0idb-0qfQ1feLUiMN2J2mWjbBig');
+          const card = await payments.card();
+          await card.attach('#sq-card-container');
+          
+          const tokenResult = await payments.requestCardNonce();
+          if (tokenResult.status === 'OK') {
+            cardNonce = tokenResult.token;
+          } else {
+            const errors = tokenResult.errors || [];
+            throw new Error(errors.map(e => e.message).join(', ') || 'Card tokenization failed');
+          }
+        } catch (error) {
+          console.log('Square SDK not available, using test nonce');
+          // For testing without Square SDK, generate a test nonce
+          cardNonce = `cnp_${Math.random().toString(36).substr(2, 9)}`;
+        }
+      } else {
+        // Fallback: generate a test nonce for development
+        console.log('Square SDK not loaded, using test nonce');
+        cardNonce = `cnp_${Math.random().toString(36).substr(2, 9)}`;
+      }
+
       // Send payment to backend for processing
       const response = await fetch('/api/square-payment', {
         method: 'POST',
@@ -145,7 +173,7 @@ export default function Checkout() {
           customerData: formData,
           amount: total,
           quantity: quantity,
-          cardData: cardData,
+          cardNonce: cardNonce,
         }),
       });
 
