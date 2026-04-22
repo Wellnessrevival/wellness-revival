@@ -25,9 +25,10 @@ const wooClient = axios.create({
   },
 });
 
-// Mailchimp API client
+// Mailchimp API client - datacenter is extracted from API key (e.g. key-us17 -> us17)
+const MAILCHIMP_DC = MAILCHIMP_API_KEY ? MAILCHIMP_API_KEY.split('-').pop() : 'us17';
 const mailchimpClient = axios.create({
-  baseURL: `https://us17.api.mailchimp.com/3.0`,
+  baseURL: `https://${MAILCHIMP_DC}.api.mailchimp.com/3.0`,
   headers: {
     Authorization: `Bearer ${MAILCHIMP_API_KEY}`,
   },
@@ -99,6 +100,7 @@ async function addToMailchimp(customerData) {
       `/lists/${MAILCHIMP_LIST_ID}/members/${subscriberHash}`,
       {
         email_address: customerData.email,
+        status_if_new: 'subscribed',
         status: 'subscribed',
         merge_fields: {
           FNAME: customerData.firstName,

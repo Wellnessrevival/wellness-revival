@@ -82,37 +82,37 @@ async function createWooCommerceOrder(customerData, amount, paymentMethod) {
   }
 }
 
-// Add customer to Mailchimp
+// Add customer to Mailchimp (upsert - works whether they exist or not)
 async function addToMailchimp(email, firstName, lastName) {
   try {
-    const datacenter = MAILCHIMP_API_KEY.split('-')[1];
-    const response = await axios.post(
-      `https://${datacenter}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members`,
+    const datacenter = MAILCHIMP_API_KEY ? MAILCHIMP_API_KEY.split('-').pop() : 'us17';
+    const { createHash } = await import('crypto');
+    const emailHash = createHash('md5').update(email.toLowerCase()).digest('hex');
+
+    const response = await axios.put(
+      `https://${datacenter}.api.mailchimp.com/3.0/lists/${MAILCHIMP_LIST_ID}/members/${emailHash}`,
       {
         email_address: email,
+        status_if_new: 'subscribed',
         status: 'subscribed',
         merge_fields: {
           FNAME: firstName,
           LNAME: lastName,
         },
+        tags: ['wellness-revival-customer', 'paypal-payment'],
       },
       {
-        auth: {
-          username: 'anystring',
-          password: MAILCHIMP_API_KEY,
+        headers: {
+          Authorization: `Bearer ${MAILCHIMP_API_KEY}`,
+          'Content-Type': 'application/json',
         },
       }
     );
 
     return response.data;
   } catch (error) {
-    // If subscriber already exists, that's okay
-    if (error.response?.status === 400 && error.response?.data?.title === 'Member Exists') {
-      console.log('Subscriber already exists in Mailchimp');
-      return { status: 'already_exists' };
-    }
     console.error('Mailchimp error:', error.response?.data || error.message);
-    throw error;
+    return null; // Don't fail the order if Mailchimp fails
   }
 }
 
