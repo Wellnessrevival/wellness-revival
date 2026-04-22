@@ -21,7 +21,7 @@ export default function ProductKit() {
               {/* Product visual side */}
             <div className="bg-gradient-to-br from-brand-green-dark to-brand-green p-8 md:p-12 flex flex-col justify-center items-center text-center">
               <div className="w-full max-w-sm mb-8">
-                <img src="/src/assets/product-kit-showcase.png" alt="Wellness Revival Kit" className="w-full h-auto object-contain" />
+                <img src="/products.png" alt="Wellness Revival Kit - Ultra BCP Oil and Bodease Balm" className="w-full h-auto object-contain" />
               </div>
               <h3 className="text-white text-2xl font-bold mb-2">What's Inside</h3>
               <div className="space-y-3 text-white/80 text-sm">
