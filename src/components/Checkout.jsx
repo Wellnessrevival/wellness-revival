@@ -34,6 +34,22 @@ export default function Checkout() {
   const handlePayPalPayment = () => {
     if (!validateForm()) return;
 
+    // Track payment method selection
+    ReactGA.event({
+      category: 'checkout',
+      action: 'payment_method_selected',
+      label: 'paypal',
+      value: parseFloat(total),
+    });
+
+    // Track form submission
+    ReactGA.event({
+      category: 'checkout',
+      action: 'form_submitted',
+      label: 'paypal_payment',
+      value: parseFloat(total),
+    });
+
     setIsProcessing(true);
     
     // Construct PayPal redirect URL
@@ -250,7 +266,14 @@ export default function Checkout() {
                     <button
                       key={method.id}
                       type="button"
-                      onClick={() => setSelectedPayment(method.id)}
+                      onClick={() => {
+                        ReactGA.event({
+                          category: 'checkout',
+                          action: 'payment_method_clicked',
+                          label: method.id,
+                        });
+                        setSelectedPayment(method.id);
+                      }}
                       className={`p-4 rounded-xl border-2 transition-all text-left ${
                         selectedPayment === method.id ? method.activeColor : method.color
                       }`}
