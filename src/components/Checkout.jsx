@@ -83,13 +83,77 @@ export default function Checkout() {
 
 
 
-  const handleSquarePayment = (e) => {
+  const handleSquarePayment = async (e) => {
     e.preventDefault();
     
     if (!validateForm()) return;
 
-    alert(`Square payment processing for $${total} AUD\n\nIn a production environment, this would securely process your card payment.\n\nOrder ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}\n\nYour Wellness Revival Kit will be shipped shortly.`);
-  };
+    setIsProcessing(true);
+
+    try {
+      // Track payment method selection
+      ReactGA.event({
+        category: 'checkout',
+        action: 'payment_method_selected',
+        label: 'square',
+        value: parseFloat(total),
+      });
+
+      // Track form submission
+      ReactGA.event({
+        category: 'checkout',
+        action: 'form_submitted',
+        label: 'square_payment',
+        value: parseFloat(total),
+      });
+
+      // Send order to backend
+      const response = await fetch('/api/square-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          customerData: formData,
+          amount: total,
+          quantity: quantity,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Track successful order
+        ReactGA.event({
+          category: 'checkout',
+          action: 'order_completed',
+          label: 'square_payment',
+          value: parseFloat(total),
+        });
+
+        alert(`Order Confirmed!\n\nOrder ID: ${data.orderId}\n\nThank you for your purchase. Your Wellness Revival Kit will be shipped shortly.\n\nA confirmation email has been sent to ${formData.email}`);
+        
+        // Reset form
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          address: '',
+          city: '',
+          state: '',
+          postcode: '',
+        });
+      } else {
+        alert('Payment processing failed. Please try again.');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert('An error occurred while processing your payment. Please try again.');
+    } finally {
+      setIsProcessing(false);
+    }
+  }
 
   const handleSubmit = (e) => {
     e.preventDefault();
