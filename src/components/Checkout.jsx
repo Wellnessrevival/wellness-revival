@@ -131,6 +131,7 @@ export default function Checkout() {
   const handleSubmit = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
     console.log('Form submitted with payment method:', selectedPayment);
 
     if (selectedPayment === 'paypal') {
@@ -173,7 +174,7 @@ export default function Checkout() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} noValidate>
           <div className="grid lg:grid-cols-5 gap-8">
             {/* Left: Form */}
             <div className="lg:col-span-3 space-y-8">
