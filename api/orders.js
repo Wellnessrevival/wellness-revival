@@ -64,7 +64,7 @@ async function createWooCommerceOrder(orderData) {
       },
       line_items: [
         {
-          product_id: 1,
+          product_id: 11748,
           quantity: orderData.quantity || 1,
           total: orderData.amount,
         },
