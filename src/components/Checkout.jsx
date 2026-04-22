@@ -14,7 +14,7 @@ export default function Checkout() {
     phone: '',
     address: '',
     city: '',
-    state: '',
+    state: 'NSW',
     postcode: '',
   });
 
@@ -26,7 +26,7 @@ export default function Checkout() {
   };
 
   const validateForm = () => {
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.address || !formData.city || !formData.state || !formData.postcode) {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.address || !formData.city || !formData.postcode) {
       alert('Please fill in all required fields');
       return false;
     }
