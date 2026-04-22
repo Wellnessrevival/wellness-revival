@@ -130,6 +130,8 @@ export default function Checkout() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log('Form submitted with payment method:', selectedPayment);
 
     if (selectedPayment === 'paypal') {
       handlePayPalPayment();
