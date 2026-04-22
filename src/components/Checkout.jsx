@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CreditCard, Building2, ShoppingBag, Shield, Lock } from 'lucide-react';
 
 export default function Checkout() {
   const [selectedPayment, setSelectedPayment] = useState('paypal');
   const [quantity, setQuantity] = useState(1);
+  const [paypalReady, setPaypalReady] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -17,6 +18,88 @@ export default function Checkout() {
 
   const kitPrice = 59.95;
   const total = (kitPrice * quantity).toFixed(2);
+
+  // Initialize PayPal buttons
+  useEffect(() => {
+    if (window.paypal && selectedPayment === 'paypal') {
+      setPaypalReady(true);
+      
+      // Render PayPal buttons
+      window.paypal.Buttons({
+        createOrder: (data, actions) => {
+          // Validate form data
+          if (!formData.firstName || !formData.lastName || !formData.email || !formData.address || !formData.city || !formData.state || !formData.postcode) {
+            alert('Please fill in all required fields');
+            return;
+          }
+
+          return actions.order.create({
+            purchase_units: [
+              {
+                amount: {
+                  value: total,
+                  currency_code: 'AUD',
+                  breakdown: {
+                    item_total: {
+                      currency_code: 'AUD',
+                      value: total,
+                    },
+                  },
+                },
+                items: [
+                  {
+                    name: 'Wellness Revival Kit',
+                    description: 'Ultra BCP Oil (15ml) + Bodease Balm (10g) + Free Shipping',
+                    sku: 'WELLNESS-REVIVAL-KIT',
+                    unit_amount: {
+                      currency_code: 'AUD',
+                      value: kitPrice.toString(),
+                    },
+                    quantity: quantity.toString(),
+                  },
+                ],
+                shipping: {
+                  name: {
+                    full_name: `${formData.firstName} ${formData.lastName}`,
+                  },
+                  address: {
+                    address_line_1: formData.address,
+                    admin_area_2: formData.city,
+                    admin_area_1: formData.state,
+                    postal_code: formData.postcode,
+                    country_code: 'AU',
+                  },
+                },
+              },
+            ],
+            payer: {
+              name: {
+                given_name: formData.firstName,
+                surname: formData.lastName,
+              },
+              email_address: formData.email,
+              phone: {
+                phone_number: {
+                  national_number: formData.phone,
+                },
+              },
+            },
+          });
+        },
+        onApprove: (data, actions) => {
+          return actions.order.capture().then((details) => {
+            alert(`Thank you, ${details.payer.name.given_name}! Your order has been processed. Order ID: ${details.id}`);
+            // In production, you would send this to your backend to process the order
+            console.log('Order details:', details);
+          });
+        },
+        onError: (err) => {
+          alert('An error occurred during the transaction. Please try again.');
+          console.error(err);
+        },
+      }).render('#paypal-button-container');
+    }
+  }, [selectedPayment, formData, total, quantity]);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -59,8 +142,9 @@ export default function Checkout() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // In production, this would integrate with the selected payment gateway
-    alert(`Thank you! Your order for ${quantity} Wellness Revival Kit(s) will be processed via ${selectedPayment}. Total: $${total} AUD.\n\nIn production, this would redirect to the ${selectedPayment} payment gateway.`);
+    if (selectedPayment !== 'paypal') {
+      alert(`Thank you! Your order for ${quantity} Wellness Revival Kit(s) will be processed via ${selectedPayment}. Total: $${total} AUD.\n\nIn production, this would redirect to the ${selectedPayment} payment gateway.`);
+    }
   };
 
   return (
@@ -229,12 +313,17 @@ export default function Checkout() {
                   <div className="mt-4 bg-amber-50 rounded-xl p-4 border border-amber-200">
                     <p className="text-sm text-brand-text font-medium mb-2">Bank Transfer Details:</p>
                     <div className="text-xs text-brand-text-light space-y-1">
-                      <p><strong>Account Name:</strong> Canna Oils Pty Ltd</p>
-                      <p><strong>BSB:</strong> XXX-XXX</p>
-                      <p><strong>Account:</strong> XXXXXXXX</p>
+                      <p><strong>Account Name:</strong> CE and JA Collins</p>
+                      <p><strong>BSB:</strong> 062-551</p>
+                      <p><strong>Account:</strong> 10305758</p>
                       <p className="mt-2 italic">Please use your order number as the payment reference. Your kit will be shipped once payment is confirmed.</p>
                     </div>
                   </div>
+                )}
+
+                {/* PayPal button container */}
+                {selectedPayment === 'paypal' && (
+                  <div id="paypal-button-container" className="mt-4"></div>
                 )}
               </div>
             </div>
@@ -301,13 +390,15 @@ export default function Checkout() {
                   </div>
                 )}
 
-                {/* Submit */}
-                <button
-                  type="submit"
-                  className="w-full bg-brand-gold hover:bg-brand-gold-light text-white py-4 rounded-full text-lg font-semibold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
-                >
-                  Complete Your Order
-                </button>
+                {/* Submit button - only show for non-PayPal methods */}
+                {selectedPayment !== 'paypal' && (
+                  <button
+                    type="submit"
+                    className="w-full bg-brand-gold hover:bg-brand-gold-light text-white py-4 rounded-full text-lg font-semibold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
+                  >
+                    Complete Your Order
+                  </button>
+                )}
 
                 {/* Trust signals */}
                 <div className="mt-6 space-y-3">
