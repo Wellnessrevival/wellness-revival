@@ -104,7 +104,7 @@ export default function Checkout() {
         throw new Error('Square SDK not loaded');
       }
 
-      const payments = window.Square.payments('sq0idp-AHIhhliilE8-btpRt5dT9g');
+      const payments = window.Square.payments('sandbox-sq0idb-0qfQ1feLUiMN2J2mWjbBig');
       paymentsRef.current = payments;
 
       // Create card payment method
