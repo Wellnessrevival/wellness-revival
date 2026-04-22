@@ -265,7 +265,7 @@ export default function Checkout() {
                       value={formData.firstName}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream/50 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                       placeholder="Jane"
                     />
                   </div>
@@ -277,7 +277,7 @@ export default function Checkout() {
                       value={formData.lastName}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream/50 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                       placeholder="Smith"
                     />
                   </div>
@@ -289,7 +289,7 @@ export default function Checkout() {
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream/50 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                       placeholder="jane@example.com"
                     />
                   </div>
@@ -300,7 +300,7 @@ export default function Checkout() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream/50 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                       placeholder="0412 345 678"
                     />
                   </div>
@@ -319,7 +319,7 @@ export default function Checkout() {
                       value={formData.address}
                       onChange={handleInputChange}
                       required
-                      className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream/50 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all text-sm"
+                      className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                       placeholder="123 Wellness Street"
                     />
                   </div>
@@ -332,7 +332,7 @@ export default function Checkout() {
                         value={formData.city}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream/50 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                         placeholder="Sydney"
                       />
                     </div>
@@ -343,7 +343,7 @@ export default function Checkout() {
                         value={formData.state}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream/50 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                       >
                         <option value="">Select</option>
                         <option value="NSW">NSW</option>
@@ -364,7 +364,7 @@ export default function Checkout() {
                         value={formData.postcode}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-3 rounded-xl border border-brand-cream-dark bg-brand-cream/50 text-brand-text focus:outline-none focus:ring-2 focus:ring-brand-gold/50 focus:border-brand-gold transition-all text-sm"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
                         placeholder="2000"
                       />
                     </div>
@@ -372,64 +372,84 @@ export default function Checkout() {
                 </div>
               </div>
 
-              {/* Payment Method */}
+              {/* Payment Method Selection */}
               <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-brand-cream-dark">
                 <h3 className="text-xl font-bold text-brand-green-dark mb-6">Payment Method</h3>
-                <div className="grid sm:grid-cols-3 gap-3">
+                <div className="grid sm:grid-cols-3 gap-4 mb-8">
                   {paymentMethods.map((method) => (
                     <button
                       key={method.id}
                       type="button"
                       onClick={() => setSelectedPayment(method.id)}
-                      className={`text-left p-4 rounded-xl border-2 transition-all ${
+                      className={`p-4 rounded-xl border-2 transition-all text-left ${
                         selectedPayment === method.id ? method.activeColor : method.color
                       }`}
                     >
-                      <div className="flex items-center gap-3 mb-1.5">
-                        <span className={`${selectedPayment === method.id ? 'text-brand-green-dark' : 'text-brand-text-light'}`}>
-                          {method.icon}
-                        </span>
-                        <span className="font-semibold text-brand-text text-sm">{method.name}</span>
+                      <div className="flex items-start gap-3">
+                        <div className="text-brand-green-dark mt-1">{method.icon}</div>
+                        <div>
+                          <h4 className="font-semibold text-brand-green-dark text-sm">{method.name}</h4>
+                          <p className="text-xs text-brand-text-light mt-1">{method.description}</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-brand-text-light">{method.description}</p>
                     </button>
                   ))}
                 </div>
 
-                {/* PayPal button container */}
+                {/* PayPal Button Container */}
                 {selectedPayment === 'paypal' && (
                   <div id="paypal-button-container" className="mt-4"></div>
                 )}
 
-                {/* Square card form */}
+                {/* Square Payment Form */}
                 {selectedPayment === 'square' && (
-                  <div className="mt-4 space-y-3">
+                  <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-brand-text mb-1.5">Card Number</label>
-                      <div id="sq-cardNumber" className="sq-input-container"></div>
+                      <input
+                        type="text"
+                        id="sq-cardNumber"
+                        placeholder="1234 5678 9012 3456"
+                        className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
+                      />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-brand-text mb-1.5">Expiration</label>
-                        <div id="sq-expirationDate" className="sq-input-container"></div>
+                        <input
+                          type="text"
+                          id="sq-expirationDate"
+                          placeholder="MM/YY"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
+                        />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-brand-text mb-1.5">CVV</label>
-                        <div id="sq-cvv" className="sq-input-container"></div>
+                        <input
+                          type="text"
+                          id="sq-cvv"
+                          placeholder="123"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
+                        />
                       </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-brand-text mb-1.5">Postal Code</label>
-                      <div id="sq-postalCode" className="sq-input-container"></div>
+                      <div>
+                        <label className="block text-sm font-medium text-brand-text mb-1.5">Postal Code</label>
+                        <input
+                          type="text"
+                          id="sq-postalCode"
+                          placeholder="2000"
+                          className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 bg-white text-brand-text placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-gold focus:border-brand-gold transition-all text-sm"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Afterpay container */}
+                {/* Afterpay Info */}
                 {selectedPayment === 'afterpay' && (
-                  <div id="afterpay-container" className="mt-4 bg-teal-50 rounded-xl p-4 border border-teal-200">
-                    <p className="text-sm text-teal-700 font-medium">
-                      Pay in 4 interest-free installments of ${(total / 4).toFixed(2)} AUD with Afterpay
+                  <div className="bg-teal-50 p-4 rounded-xl border border-teal-200">
+                    <p className="text-sm text-brand-text">
+                      You'll receive 4 payments of <strong>${(total / 4).toFixed(2)} AUD</strong> due every 2 weeks.
                     </p>
                   </div>
                 )}
@@ -440,86 +460,71 @@ export default function Checkout() {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-brand-cream-dark sticky top-24">
                 <h3 className="text-xl font-bold text-brand-green-dark mb-6">Order Summary</h3>
-
-                {/* Kit item */}
-                <div className="flex items-start gap-4 pb-4 border-b border-brand-cream-dark">
-                  <div className="w-16 h-16 bg-brand-green-dark/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <ShoppingBag size={24} className="text-brand-green-dark" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-semibold text-brand-text text-sm">Wellness Revival Kit</p>
-                    <p className="text-xs text-brand-text-light mt-0.5">Ultra BCP Oil + Bodease Balm</p>
-                    <div className="flex items-center gap-3 mt-2">
-                      <label className="text-xs text-brand-text-light">Qty:</label>
-                      <select
-                        value={quantity}
-                        onChange={(e) => setQuantity(Number(e.target.value))}
-                        className="px-2 py-1 rounded-lg border border-brand-cream-dark text-sm bg-brand-cream/50 text-brand-text"
-                      >
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <option key={n} value={n}>{n}</option>
-                        ))}
-                      </select>
+                
+                <div className="space-y-4 pb-6 border-b border-brand-cream-dark">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-brand-text">Wellness Revival Kit</p>
+                      <p className="text-xs text-brand-text-light mt-1">Ultra BCP Oil + Bodease Balm</p>
                     </div>
+                    <p className="font-semibold text-brand-text">${kitPrice.toFixed(2)}</p>
                   </div>
-                  <p className="font-semibold text-brand-text text-sm">${total}</p>
+
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-brand-text">Quantity:</label>
+                    <select
+                      value={quantity}
+                      onChange={(e) => setQuantity(parseInt(e.target.value))}
+                      className="px-3 py-2 rounded-lg border border-gray-300 bg-white text-brand-text text-sm"
+                    >
+                      {[1, 2, 3, 4, 5].map((num) => (
+                        <option key={num} value={num}>{num}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {/* Pricing breakdown */}
-                <div className="py-4 space-y-2 border-b border-brand-cream-dark">
+                <div className="space-y-3 py-6 border-b border-brand-cream-dark">
                   <div className="flex justify-between text-sm">
                     <span className="text-brand-text-light">Subtotal</span>
-                    <span className="text-brand-text">${total}</span>
+                    <span className="text-brand-text font-medium">${total}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-brand-text-light">Shipping</span>
-                    <span className="text-brand-green font-medium">FREE</span>
+                    <span className="text-brand-text font-medium">FREE</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-brand-text-light">You save</span>
-                    <span className="text-red-500 font-medium">-${(29.95 * quantity).toFixed(2)}</span>
+                    <span className="text-red-600 font-medium">-${(29.95 * quantity).toFixed(2)}</span>
                   </div>
                 </div>
 
-                {/* Total */}
-                <div className="flex justify-between items-baseline pt-4 mb-6">
-                  <span className="text-lg font-bold text-brand-green-dark">Total</span>
-                  <div className="text-right">
-                    <span className="text-2xl font-bold text-brand-green-dark">${total}</span>
-                    <span className="block text-xs text-brand-text-light">AUD incl. GST</span>
+                <div className="py-6 mb-6">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-brand-text-light">Total</span>
+                    <span className="text-3xl font-bold text-brand-green-dark">${total}</span>
                   </div>
+                  <p className="text-xs text-brand-text-light mt-2">AUD incl. GST</p>
                 </div>
 
-                {selectedPayment === 'afterpay' && (
-                  <div className="bg-teal-50 rounded-xl p-3 mb-4 text-center">
-                    <p className="text-xs text-teal-700 font-medium">
-                      or 4 interest-free payments of ${(total / 4).toFixed(2)} with Afterpay
-                    </p>
-                  </div>
-                )}
+                <button
+                  type="submit"
+                  className="w-full bg-brand-gold hover:bg-brand-gold/90 text-white font-semibold py-3 rounded-xl transition-colors mb-4"
+                >
+                  Complete Your Order
+                </button>
 
-                {/* Submit button - only show for non-PayPal methods */}
-                {selectedPayment !== 'paypal' && (
-                  <button
-                    type="submit"
-                    className="w-full bg-brand-gold hover:bg-brand-gold-light text-white py-4 rounded-full text-lg font-semibold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 cursor-pointer"
-                  >
-                    Complete Your Order
-                  </button>
-                )}
-
-                {/* Trust signals */}
-                <div className="mt-6 space-y-3">
-                  <div className="flex items-center gap-2 text-brand-text-light text-xs">
-                    <Lock size={14} className="text-brand-green flex-shrink-0" />
+                <div className="space-y-3 text-xs text-brand-text-light">
+                  <div className="flex items-center gap-2">
+                    <Lock size={16} className="text-brand-gold" />
                     <span>256-bit SSL encrypted checkout</span>
                   </div>
-                  <div className="flex items-center gap-2 text-brand-text-light text-xs">
-                    <Shield size={14} className="text-brand-green flex-shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <Shield size={16} className="text-brand-gold" />
                     <span>30-day satisfaction guarantee</span>
                   </div>
-                  <div className="flex items-center gap-2 text-brand-text-light text-xs">
-                    <ShoppingBag size={14} className="text-brand-green flex-shrink-0" />
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag size={16} className="text-brand-gold" />
                     <span>Free standard shipping</span>
                   </div>
                 </div>
