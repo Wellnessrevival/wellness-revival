@@ -9,9 +9,12 @@ const MAILCHIMP_LIST_ID = process.env.MAILCHIMP_LIST_ID || 'c00cb4c301';
 const SQUARE_ACCESS_TOKEN = process.env.SQUARE_ACCESS_TOKEN;
 const SQUARE_LOCATION_ID = process.env.SQUARE_LOCATION_ID;
 
-// Square uses sandbox URL for sandbox tokens (EAAAl...) and production for live (EAAA...)
-// Sandbox tokens start with sandbox- prefix in the Application ID but access tokens start with EAAA
-const SQUARE_BASE_URL = 'https://connect.squareupsandbox.com/v2';
+// Auto-detect Square environment based on access token
+// Production tokens start with EAAA, sandbox tokens start with EAAAl or are shorter
+// The access token provided starts with EAAAEGetX75 which is a production token
+const SQUARE_BASE_URL = process.env.SQUARE_ACCESS_TOKEN && process.env.SQUARE_ACCESS_TOKEN.startsWith('EAAAlE')
+  ? 'https://connect.squareupsandbox.com/v2'
+  : 'https://connect.squareup.com/v2';
 
 export default async function handler(req, res) {
   // CORS headers
