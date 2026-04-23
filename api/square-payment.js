@@ -98,7 +98,6 @@ export default async function handler(req, res) {
         },
       },
       pre_populated_data: {
-        buyer_email: customerData.email,
         buyer_address: {
           first_name: customerData.firstName,
           last_name: customerData.lastName,
@@ -110,6 +109,15 @@ export default async function handler(req, res) {
         },
       },
     };
+
+    // Add email to pre_populated_data if it looks like a real email
+    // Square rejects test/placeholder domains like example.com
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    const testDomains = ['example.com', 'test.com', 'placeholder.com', 'fake.com', 'dummy.com'];
+    const emailDomain = customerData.email ? customerData.email.split('@')[1]?.toLowerCase() : '';
+    if (customerData.email && emailRegex.test(customerData.email) && !testDomains.includes(emailDomain)) {
+      paymentLinkPayload.pre_populated_data.buyer_email = customerData.email;
+    }
 
     // Add phone if provided - Square requires E.164 format (+61XXXXXXXXX for Australia)
     if (customerData.phone) {
