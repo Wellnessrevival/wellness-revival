@@ -156,7 +156,7 @@ export default async function handler(req, res) {
             },
             line_items: [
               {
-                product_id: 30,
+                product_id: 11748,
                 quantity: parseInt(quantity) || 1,
               },
             ],
