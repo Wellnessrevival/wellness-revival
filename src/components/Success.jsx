@@ -10,10 +10,45 @@ export default function Success() {
     // ?transactionId=...&orderId=...&referenceId=...
     const params = new URLSearchParams(window.location.search);
     const squareOrderId = params.get('orderId') || params.get('transactionId') || params.get('referenceId');
+    const afterpayToken = params.get('orderToken'); // Afterpay passes orderToken on redirect
+    const afterpayStatus = params.get('status'); // Afterpay passes status=SUCCESS or CANCELLED
 
     console.log('Success page loaded. URL params:', Object.fromEntries(params));
-    console.log('Square Order ID from URL:', squareOrderId);
 
+    // Handle Afterpay redirect
+    if (afterpayToken) {
+      console.log(`Afterpay redirect. Token: ${afterpayToken}, Status: ${afterpayStatus}`);
+
+      if (afterpayStatus === 'CANCELLED') {
+        // Customer cancelled — redirect back to checkout
+        window.location.href = '/#checkout';
+        return;
+      }
+
+      const captureAfterpay = async () => {
+        try {
+          const response = await fetch('/api/afterpay-capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: afterpayToken, status: afterpayStatus }),
+          });
+          const data = await response.json();
+          console.log('Afterpay capture response:', data);
+          if (data.success) {
+            setOrderNumber(data.wooOrderId);
+          }
+          setOrderStatus('confirmed');
+        } catch (err) {
+          console.error('Afterpay capture error:', err);
+          setOrderStatus('confirmed');
+        }
+      };
+
+      captureAfterpay();
+      return;
+    }
+
+    // Handle Square redirect
     if (!squareOrderId) {
       // No order ID in URL - still show success (customer may have paid)
       setOrderStatus('confirmed');

@@ -20,6 +20,7 @@ export default function Checkout() {
 
   const kitPrice = 59.95;
   const total = (kitPrice * quantity).toFixed(2);
+  const afterpayInstalment = (parseFloat(total) / 4).toFixed(2);
 
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -36,22 +37,10 @@ export default function Checkout() {
   const handlePayPalPayment = () => {
     if (!validateForm()) return;
 
-    ReactGA.event({
-      category: 'checkout',
-      action: 'payment_method_selected',
-      label: 'paypal',
-      value: parseFloat(total),
-    });
-
-    ReactGA.event({
-      category: 'checkout',
-      action: 'form_submitted',
-      label: 'paypal_payment',
-      value: parseFloat(total),
-    });
+    ReactGA.event({ category: 'checkout', action: 'payment_method_selected', label: 'paypal', value: parseFloat(total) });
 
     setIsProcessing(true);
-    
+
     const paypalParams = new URLSearchParams({
       cmd: '_xclick',
       business: 'W7GGQ7GFAJ2L6',
@@ -82,40 +71,20 @@ export default function Checkout() {
   const handleSquarePayment = async () => {
     if (!validateForm()) return;
 
-    ReactGA.event({
-      category: 'checkout',
-      action: 'payment_method_selected',
-      label: 'square',
-      value: parseFloat(total),
-    });
-
-    ReactGA.event({
-      category: 'checkout',
-      action: 'form_submitted',
-      label: 'square_payment',
-      value: parseFloat(total),
-    });
+    ReactGA.event({ category: 'checkout', action: 'payment_method_selected', label: 'square', value: parseFloat(total) });
 
     setIsProcessing(true);
 
     try {
-      // Call backend to create a Square Payment Link
       const response = await fetch('/api/square-payment', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          customerData: formData,
-          amount: total,
-          quantity: quantity,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerData: formData, amount: total, quantity }),
       });
 
       const data = await response.json();
 
       if (response.ok && data.success && data.checkoutUrl) {
-        // Redirect to Square's hosted checkout page
         window.location.href = data.checkoutUrl;
       } else {
         alert(`Payment setup failed: ${data.error || 'Please try again.'}`);
@@ -128,16 +97,46 @@ export default function Checkout() {
     }
   };
 
+  const handleAfterpayPayment = async () => {
+    if (!validateForm()) return;
+
+    ReactGA.event({ category: 'checkout', action: 'payment_method_selected', label: 'afterpay', value: parseFloat(total) });
+
+    setIsProcessing(true);
+
+    try {
+      const response = await fetch('/api/afterpay-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerData: formData, amount: total, quantity }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success && data.redirectCheckoutUrl) {
+        // Redirect to Afterpay's hosted checkout page
+        window.location.href = data.redirectCheckoutUrl;
+      } else {
+        alert(`Payment setup failed: ${data.error || 'Please try again.'}`);
+        setIsProcessing(false);
+      }
+    } catch (error) {
+      console.error('Afterpay error:', error);
+      alert('An error occurred while setting up Afterpay. Please try again.');
+      setIsProcessing(false);
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.nativeEvent) e.nativeEvent.stopImmediatePropagation();
-    console.log('Form submitted with payment method:', selectedPayment);
 
     if (selectedPayment === 'paypal') {
       handlePayPalPayment();
     } else if (selectedPayment === 'square') {
       handleSquarePayment();
+    } else if (selectedPayment === 'afterpay') {
+      handleAfterpayPayment();
     }
   };
 
@@ -157,6 +156,20 @@ export default function Checkout() {
       description: 'Visa, Mastercard, AMEX — powered by Square',
       color: 'bg-gray-50 border-gray-200',
       activeColor: 'bg-gray-50 border-gray-500 ring-2 ring-gray-200',
+    },
+    {
+      id: 'afterpay',
+      name: 'Afterpay',
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="24" height="24" rx="4" fill="#B2FCE4"/>
+          <path d="M12 5L7 9.5H10V14.5H14V9.5H17L12 5Z" fill="#000"/>
+          <path d="M7 14.5H10V19H14V14.5H17" stroke="#000" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+      ),
+      description: `Pay in 4 interest-free instalments of $${afterpayInstalment} AUD`,
+      color: 'bg-green-50 border-green-200',
+      activeColor: 'bg-green-50 border-green-500 ring-2 ring-green-200',
     },
   ];
 
@@ -338,6 +351,14 @@ export default function Checkout() {
                     You will be securely redirected to Square to enter your card details and complete your payment.
                   </div>
                 )}
+
+                {selectedPayment === 'afterpay' && (
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                    <p className="font-semibold mb-1">Pay in 4 interest-free instalments with Afterpay</p>
+                    <p>4 x <strong>${afterpayInstalment} AUD</strong> — no interest, no fees if you pay on time.</p>
+                    <p className="mt-1">You will be redirected to Afterpay to complete your payment.</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -388,13 +409,22 @@ export default function Checkout() {
                 </div>
 
                 {/* Total */}
-                <div className="mb-6 pb-6 border-t-2 border-b-2 border-gray-200 pt-4">
+                <div className="mb-4 pb-4 border-t-2 border-b-2 border-gray-200 pt-4">
                   <div className="flex justify-between items-center">
                     <span className="text-lg font-bold text-brand-text">Total</span>
                     <span className="text-3xl font-bold text-brand-gold">${total}</span>
                   </div>
                   <p className="text-xs text-brand-text-light mt-1">AUD incl. GST</p>
                 </div>
+
+                {/* Afterpay instalment callout */}
+                {selectedPayment === 'afterpay' && (
+                  <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                    <p className="text-xs text-green-700 font-medium">
+                      or 4 x <strong>${afterpayInstalment}</strong> with Afterpay
+                    </p>
+                  </div>
+                )}
 
                 {/* Submit Button */}
                 <button
